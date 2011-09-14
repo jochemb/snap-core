@@ -300,6 +300,32 @@ runRequestBody iter = do
          ])
 
 
+
+------------------------------------------------------------------------------
+type EscapeHttpHandler = (Int -> IO ())                         -- ^ timeout tickler
+                      -> (forall a. Enumerator ByteString IO a) -- ^ read end
+                      -> Iteratee Builder IO ()                 -- ^ write end
+                      -> IO ()
+    
+-- | Escape HTTP handling. Useful for handling some HTTP Upgrade
+-- headers if applicable. When your handler is called, the HTTP request
+-- has already been parsed and the HTTP response headers have already
+-- been sent. After that, you are free to use the read enumerator and
+-- write iteratee to communicate with the client.
+-- Before you call this function, you should have made sure that this
+-- request is upgraded to whatever protocol you're willing to accept.
+-- This is done by inspecting the HTTP request headers as usual.
+-- The first argument passed to your handler is the timeout tickler.
+-- The second argument is the read end of the socket.
+-- The third argument is the write end of the socket.
+-- On timeout, the socket will be closed.
+-- However, your handler will not be killed since
+-- it runs in a different thread.
+escapeHttp :: MonadSnap m => EscapeHttpHandler -> m ()
+escapeHttp h = modifyResponse (\r -> r { rspBody = EscapeHttp h })
+
+
+
 ------------------------------------------------------------------------------
 -- | Returns the request body as a bytestring.
 getRequestBody :: MonadSnap m => m L.ByteString

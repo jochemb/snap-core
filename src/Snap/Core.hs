@@ -123,6 +123,7 @@ module Snap.Core
   , writeLBS
   , sendFile
   , sendFilePartial
+  , escapeHttp
 
     -- ** Timeouts
   , setTimeout

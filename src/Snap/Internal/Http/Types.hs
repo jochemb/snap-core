@@ -52,7 +52,7 @@ import           Foreign.C.String
 ------------------------------------------------------------------------------
 import           Data.CaseInsensitive   (CI)
 import qualified Data.CaseInsensitive as CI
-import           Snap.Iteratee (Enumerator)
+import           Snap.Iteratee (Enumerator, Iteratee)
 import qualified Snap.Iteratee as I
 import           Snap.Types.Headers (Headers)
 import qualified Snap.Types.Headers as H
@@ -361,6 +361,17 @@ data ResponseBody = Enum (forall a . Enumerator Builder IO a)
                   | SendFile FilePath (Maybe (Int64,Int64))
                       -- ^ output body is sendfile(), optional second argument
                       --   is a byte range to send
+                  | EscapeHttp (
+                                 (Int -> IO ()) ->
+                                 (forall a. Enumerator ByteString IO a) ->
+                                 Iteratee Builder IO () ->
+                                 IO ())
+                      -- ^ indicates that we have want to escape
+                      -- the HTTP handling and do the reading/writing
+                      -- ourselves. The handler takes three arguments.
+                      -- The first is the timeout tickler, the second
+                      -- the read end, the third the write end.
+
 
 
 ------------------------------------------------------------------------------
@@ -373,12 +384,13 @@ rspBodyMap f b      = Enum $ f $ rspBodyToEnum b
 
 
 ------------------------------------------------------------------------------
-rspBodyToEnum :: ResponseBody -> Enumerator Builder IO a
+rspBodyToEnum :: ResponseBody -> Enumerator Builder IO a 
 rspBodyToEnum (Enum e) = e
 rspBodyToEnum (SendFile fp Nothing) =
     I.mapEnum toByteString fromByteString $ I.enumFile fp
 rspBodyToEnum (SendFile fp (Just s)) =
     I.mapEnum toByteString fromByteString $ I.enumFilePartial fp s
+rspBodyToEnum (EscapeHttp _) = I.returnI
 
 
 ------------------------------------------------------------------------------

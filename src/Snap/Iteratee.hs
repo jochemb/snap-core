@@ -65,6 +65,7 @@ module Snap.Iteratee
   , ($$)
   , (>==>)
   , (<==<)
+  , checkContinue0
 
     -- *** Iteratees
   , run
